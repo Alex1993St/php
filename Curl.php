@@ -1,10 +1,11 @@
 <?php
+require 'env.php';
 
 class Curl
 {
     public function getData($number, $size)
     {
-        $url = 'https://trial.craig.mtcserver15.com/api/properties?api_key=2S7rhsaq9X1cnfkMCPHX64YsWYyfe1he&page[number]=' . $number . '&page[size]=' . $size;
+        $url = URL . '?api_key=' . KEY .'[number]=' . $number . '&page[size]=' . $size;
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, 0);
