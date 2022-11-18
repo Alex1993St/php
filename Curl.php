@@ -5,7 +5,7 @@ class Curl
 {
     public function getData($number, $size)
     {
-        $url = URL . '?api_key=' . KEY .'[number]=' . $number . '&page[size]=' . $size;
+        $url = URL . '?api_key=' . KEY .'&page[number]=' . $number . '&page[size]=' . $size;
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_POST, 0);

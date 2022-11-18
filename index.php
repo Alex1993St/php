@@ -1,37 +1,41 @@
 <?php
-require_once 'TraitDatabase.php';
-
-class Item
-{
-    use TraitDatabase;
-
-    public function __construct()
-    {
-        $this->connect();
-    }
-}
+spl_autoload_register(function ($class_name) {
+    include $class_name . '.php';
+});
 
 $param = $_GET;
 $data = new Item();
 $items = $data->getInfoAndProperty($param);
 $pagination = $data->pagination($param);
+$types = $data->getType();
+$towns = $data->getTown();
+$href = $data->getHref();
 ?>
+
 <html>
 <body>
 <form>
-    <input type="text" name="town" value="<?= isset($param['town']) ? $param['town'] : '' ?>" placeholder="Town">
+    <select name="town">
+        <option value=""></option>
+        <?php foreach ($towns as $town): ?>
+            <option value="<?= $town['id'] ?>" <?= isset($param['town']) && $param['town'] == $town['id']  ? 'selected' : '' ?>><?= $town['town'] ?></option>
+        <?php endforeach; ?>
+    </select>
     <input type="number" name="number" value="<?= isset($param['number']) ? $param['number'] : '' ?>"
            placeholder="Number of Bedrooms">
-    <input type="text" name="price" value="<?= isset($param['price']) ? $param['price'] : '' ?>" placeholder="Price">
+    <input type="text" name="price_from" value="<?= isset($param['price_from']) ? $param['price_from'] : '' ?>" placeholder="Price from">
+    <input type="text" name="price_to" value="<?= isset($param['price_to']) ? $param['price_to'] : '' ?>" placeholder="Price to">
     <input type="text" name="property_type" value="<?= isset($param['property_type']) ? $param['property_type'] : '' ?>"
            placeholder="Property Type">
     <select name="type">
         <option value=""></option>
-        <option value="sale" <?= isset($param['type']) && $param['type'] == 'sale' ? 'selected' : '' ?>>Sale</option>
-        <option value="rent" <?= isset($param['type']) && $param['type'] == 'rent' ? 'selected' : '' ?>>Rent</option>
+        <?php foreach ($types as $type): ?>
+            <option value="<?= $type['id'] ?>" <?= isset($param['type']) && $param['type'] == $type['id']  ? 'selected' : '' ?>><?= $type['type'] ?></option>
+        <?php endforeach; ?>
     </select>
     <button type="submit">Filter</button>
 </form>
+
 <?php foreach ($items as $item): ?>
     <div>
         <p>Uuid: <?= isset($item['uuid']) ? $item['uuid'] : '' ?> </p>
@@ -54,24 +58,6 @@ $pagination = $data->pagination($param);
         <hr/>
     </div>
 <?php endforeach; ?>
-
-<?php
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
-$href = '';
-if ($uri) {
-    parse_str($uri, $items);
-    $j = 1;
-    unset($items['page']);
-    foreach ($items as $key => $item) {
-        $href .= $j == 1 ? '?' : '&';
-        $href .= $key . '=' . $item;
-        $j++;
-    }
-}
-
-$href .= $href ? '&' : '?';
-
-?>
 
 <?php for ($i = 0; $i < $pagination; $i++): ?>
     <a href="<?= $href ?>page=<?= $i + 1 ?>"><?= $i + 1 ?> | </a>
