@@ -14,9 +14,9 @@ trait TraitDatabase
         $this->dbConnect = mysqli_connect(self::$host, self::$userName, self::$password, self::$database) or die(mysqli_error());
     }
 
-    public function fetchQuery($table, $id, $column = 'id')
+    public function fetchQuery($table, $value, $column = 'id')
     {
-        return $this->dbConnect->query("SELECT * FROM $table WHERE $column = '$id'")->fetch_assoc();
+        return $this->dbConnect->query('SELECT * FROM ' . $table . ' WHERE ' . $column . ' = "' . $value . '"')->fetch_assoc();
     }
 
     public function prepareProperty()
@@ -29,14 +29,34 @@ trait TraitDatabase
         $this->smtp->bind_param("issss", $param->id, $param->title, $param->description, $param->created_at, $param->updated_at);
     }
 
+    public function preparePlace()
+    {
+        $this->smtp = mysqli_prepare($this->dbConnect, "INSERT INTO places (id, county, country, town, address, latitude, longitude, num_bedrooms, num_bathrooms) VALUES (?,?,?,?,?,?,?,?,?)");
+    }
+
+    public function bindParamPlace($param)
+    {
+        $this->smtp->bind_param("issssssii", $param->id, $param->county, $param->country, $param->town, $param->address, $param->latitude, $param->longitude, $param->num_bedrooms, $param->num_bathrooms);
+    }
+
+    public function prepareType()
+    {
+        $this->smtp = mysqli_prepare($this->dbConnect, "INSERT INTO types (id, type) VALUES (?,?)");
+    }
+
+    public function bindParamType($param)
+    {
+        $this->smtp->bind_param("is", $param->id, $param->type);
+    }
+
     public function prepareInformation()
     {
-        $this->smtp = mysqli_prepare($this->dbConnect, "INSERT INTO informations (uuid, property_type_id, county, country, town, description, address, image_full, image_thumbnail, latitude, longitude, num_bedrooms, num_bathrooms, price, type, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        $this->smtp = mysqli_prepare($this->dbConnect, "INSERT INTO informations (uuid, property_type_id, place_id, description, image_full, image_thumbnail, price, type_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)");
     }
 
     public function bindParamInformation($param)
     {
-        $this->smtp->bind_param("sisssssssssiiisss", $param->uuid, $param->property_type_id, $param->county, $param->country, $param->town, $param->description, $param->address, $param->image_full, $param->image_thumbnail, $param->latitude, $param->longitude, $param->num_bedrooms, $param->num_bathrooms, $param->price, $param->type, $param->created_at, $param->updated_at);
+        $this->smtp->bind_param("siisssiiss", $param->uuid, $param->property_type_id, $param->place_id, $param->description, $param->image_full, $param->image_thumbnail, $param->price, $param->type_id, $param->created_at, $param->updated_at);
     }
 
     public function query()
@@ -44,57 +64,30 @@ trait TraitDatabase
         $this->smtp->execute();
     }
 
-    public function getInfoAndProperty($param)
+    public function getInfo($where, $limit)
     {
-        $where = $this->filter($param);
-
-        $page = isset($param['page']) && $param['page'] > 1 ? $param['page'] : 1;
-        $perPage = $this->perPage($param);
-        $limit = ' LIMIT ' . ($page - 1) * $perPage . ', ' . $perPage;
-
-        return $this->dbConnect->query("SELECT * FROM informations LEFT JOIN properties ON informations.property_type_id = properties.id" . $where . $limit)->fetch_all(MYSQLI_ASSOC);
+        return $this->dbConnect->query("SELECT * FROM informations LEFT JOIN properties ON informations.property_type_id = properties.id 
+                                                                   LEFT JOIN places ON informations.place_id = places.id 
+                                                                   LEFT JOIN types ON informations.type_id = types.id 
+                                                                  " . $where . $limit)->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function total($param)
+    public function getTotal($where)
     {
-        $where = $this->filter($param);
-
-        $total = $this->dbConnect->query("SELECT COUNT(*) FROM informations LEFT JOIN properties ON informations.property_type_id = properties.id" . $where);
+        $total = $this->dbConnect->query("SELECT COUNT(*) FROM informations LEFT JOIN properties ON informations.property_type_id = properties.id 
+                                                                   LEFT JOIN places ON informations.place_id = places.id 
+                                                                   LEFT JOIN types ON informations.type_id = types.id 
+                                                                  " . $where);
         return $total->fetch_array()[0];
     }
 
-    public function pagination($param)
+    public function getType()
     {
-        $total = $this->total($param);
-        return $total ? ceil($total / $this->perPage($param)) : 0;
+        return $this->dbConnect->query("SELECT * FROM types")->fetch_all(MYSQLI_ASSOC);
     }
 
-    private function perPage($param)
+    public function getTown()
     {
-        return isset($param['per_page']) && $param['per_page'] ? $param['per_page'] : 30;;
-    }
-
-    private function filter($param)
-    {
-        $where = " where 1 = 1";
-        if ($param) {
-            if (isset($param['town']) && $param['town']) {
-                $where .= " and informations.town like '%" . trim($param['town']) . "%'";
-            }
-            if (isset($param['number']) && $param['number']) {
-                $where .= " and informations.num_bedrooms = '" . trim($param['number']) . "'";
-            }
-            if (isset($param['price']) && $param['price']) {
-                $where .= " and informations.price = '" . trim($param['price']) . "'";
-            }
-            if (isset($param['property_type']) && $param['property_type']) {
-                $where .= " and properties.title like '%" . trim($param['property_type']) . "%'";
-            }
-            if (isset($param['type']) && $param['type']) {
-                $where .= " and informations.type = '" . trim($param['type']) . "'";
-            }
-        }
-
-        return $where;
+        return $this->dbConnect->query("SELECT id, town FROM places")->fetch_all(MYSQLI_ASSOC);
     }
 }

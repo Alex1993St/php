@@ -1,5 +1,7 @@
 <?php
-require_once 'TraitDatabase.php';
+spl_autoload_register(function ($class_name) {
+    include $class_name . '.php';
+});
 
 class Fill
 {
@@ -8,6 +10,8 @@ class Fill
     private $command = 'php Curl.php';
     private $tableProperties = 'properties';
     private $tableInformations = 'informations';
+    private $tablePlaces = 'places';
+    private $tableTypes = 'types';
 
     public function __construct()
     {
@@ -22,7 +26,6 @@ class Fill
             $decodeOutput = json_decode($info);
             $items = $decodeOutput ? $decodeOutput->data : null;
             if ($items) {
-                // TODO переробити на batch insert
                 foreach ($items as $item) {
                     $this->fiiDatabase($item);
                     if ($number != $decodeOutput->last_page) {
@@ -43,13 +46,16 @@ class Fill
     public function fiiDatabase($data)
     {
         $this->setProperty($data);
+        $place = $this->setPlace($data);
+        $type = $this->setType($data);
+        $data->place_id = $place['id'];
+        $data->type_id = $type['id'];
         $this->setInformation($data);
     }
 
     public function setProperty($data)
     {
         if($data->property_type_id) {
-            // TODO можена закешувати $exists щоб не робити зайві запити в БД
             $exists = $this->fetchQuery($this->tableProperties, $data->property_type_id);
             if (!$exists) {
                 $this->prepareProperty();
@@ -61,13 +67,36 @@ class Fill
 
     public function setInformation($data)
     {
-        // TODO можена закешувати $exists щоб не робити зайві запити в БД
         $exists = $this->fetchQuery($this->tableInformations, $data->uuid, 'uuid');
         if (!$exists) {
             $this->prepareInformation();
             $this->bindParamInformation($data);
             $this->query();
         }
+    }
+
+    public function setPlace($data)
+    {
+        $place = $this->fetchQuery($this->tablePlaces, $data->town, 'town');
+        if (!$place) {
+            $this->preparePlace();
+            $this->bindParamPlace($data);
+            $this->query();
+            $place = $this->fetchQuery($this->tablePlaces, $data->town, 'town');
+        }
+        return $place;
+    }
+
+    public function setType($data)
+    {
+        $type = $this->fetchQuery($this->tableTypes, $data->type, 'type');
+        if (!$type) {
+            $this->prepareType();
+            $this->bindParamType($data);
+            $this->query();
+            $type = $this->fetchQuery($this->tableTypes, $data->type, 'type');
+        }
+        return $type;
     }
 }
 
